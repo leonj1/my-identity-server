@@ -36,3 +36,6 @@ WORKDIR /workspace
 
 # Switch to non-root user
 USER $USERNAME
+
+# Set bash as the default command to run when the container starts
+CMD ["/bin/bash"]
