@@ -1,10 +1,10 @@
-FROM mcr.microsoft.com/dotnet/sdk:7.0
+FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 
 # Install Python and other dependencies
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
     python3 python3-pip python3-venv \
-    git curl wget \
+    git curl wget make vim \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

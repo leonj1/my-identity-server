@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   identity-server:
     build:
@@ -25,6 +23,18 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  devcontainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build # Use the 'build' stage from Dockerfile
+    volumes:
+      - .:/workspace:cached # Mount the project root
+      - /var/run/docker.sock:/var/run/docker.sock # Mount docker socket
+    working_dir: /workspace
+    command: sleep infinity # Keep the container running
+    user: vscode # Match remoteUser in devcontainer.json
 
 volumes:
   postgres_data:
