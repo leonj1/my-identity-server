@@ -1,0 +1,27 @@
+version: '3.3'
+
+services:
+  identity-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5050:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/.well-known/openid-configuration"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  integration-client:
+    build:
+      context: .
+      dockerfile: Dockerfile.integration
+    depends_on:
+      - identity-server
+    # Add a script that waits for the identity server to be healthy before starting the client
+    entrypoint: ["/bin/sh", "-c", "echo 'Waiting for identity server to be ready...' && until curl -s http://identity-server:5000/.well-known/openid-configuration > /dev/null 2>&1; do sleep 2; echo 'Still waiting...'; done && echo 'Identity server is ready!' && ./identity_client.py --server http://identity-server:5000"]
