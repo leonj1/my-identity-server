@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=https://+:5001
+    networks:
+      - identity-network
+    depends_on:
+      - db
+
+  db:
+    image: postgres:14
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=identity_admin
+      - POSTGRES_PASSWORD=identity_password
+      - POSTGRES_DB=identity_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - identity-network
+    ports:
+      - "5432:5432"
+
+networks:
+  identity-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

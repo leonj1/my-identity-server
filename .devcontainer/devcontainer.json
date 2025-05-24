@@ -1,0 +1,29 @@
+{
+    "name": "Identity Server Development",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "devcontainer",
+    "workspaceFolder": "/workspace",
+    
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-dotnettools.csharp",
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-azuretools.vscode-docker",
+                "editorconfig.editorconfig"
+            ],
+            "settings": {
+                "editor.formatOnSave": true,
+                "python.linting.enabled": true,
+                "python.linting.pylintEnabled": true,
+                "python.formatting.provider": "black",
+                "csharp.format.enable": true
+            }
+        }
+    },
+    
+    "forwardPorts": [5001, 5432],
+    "postCreateCommand": "dotnet restore ./src/MyIdentityServer.csproj && pip install -r .devcontainer/requirements.txt",
+    "remoteUser": "vscode"
+}
