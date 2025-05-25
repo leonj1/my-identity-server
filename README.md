@@ -7,75 +7,55 @@ This project shows how to protect a JWT token against token abuse using OAuth 2.
 ## Architecture Overview
 
 ```mermaid
-graph TB
-    subgraph "Docker Environment"
-        subgraph "Identity Server Container"
-            IS[Identity Server<br/>ASP.NET Core + Duende IdentityServer]
-            CONFIG[Config.cs<br/>- API Scopes: api1<br/>- Client: client/secret<br/>- Grant: Client Credentials]
-            ENDPOINTS[OpenID Connect Endpoints<br/>/.well-known/openid-configuration<br/>/.well-known/jwks_uri<br/>/connect/token]
-        end
-        
-        subgraph "Integration Client Container"
-            CLIENT[Python Integration Client<br/>identity_client.py]
-        end
-        
-        subgraph "Optional Database"
-            DB[(PostgreSQL<br/>Token Storage)]
-        end
-    end
+sequenceDiagram
+    participant Docker as Docker Environment
+    participant Client as Integration Client<br/>(Python)
+    participant Server as Identity Server<br/>(ASP.NET Core + Duende)
+    participant Config as Config.cs<br/>(In-Memory Store)
+    participant JWKS as JWKS Endpoint<br/>(.well-known/jwks_uri)
+
+    Note over Docker: 1. Environment Setup
+    Docker->>Server: Start Identity Server Container
+    Docker->>Client: Start Integration Client Container
+    Server->>Config: Load Configuration<br/>- Client: client/secret<br/>- Scope: api1<br/>- Grant: Client Credentials
+
+    Note over Client,Server: 2. Client Registration Phase
+    Client->>Client: Initialize with pre-configured<br/>client credentials (client/secret)
     
-    subgraph "Token Flow Process"
-        REGISTER[1. Client Registration<br/>Pre-configured or Dynamic]
-        TOKEN_REQ[2. Token Request<br/>Client Credentials Flow]
-        TOKEN_RESP[3. JWT Token Response<br/>Bearer Token + Metadata]
-        VALIDATE[4. Token Validation<br/>6-Step Security Validation]
-    end
+    Note over Client,Server: 3. OpenID Connect Discovery
+    Client->>Server: GET /.well-known/openid-configuration
+    Server-->>Client: OpenID Configuration<br/>(endpoints, issuer, etc.)
     
-    subgraph "Security Validations"
-        V1[Validation 1:<br/>Signature Verification<br/>Using JWKS]
-        V2[Validation 2:<br/>Audience Claim<br/>aud = 'api1']
-        V3[Validation 3:<br/>Expiry Check<br/>exp > current_time]
-        V4[Validation 4:<br/>Scope Validation<br/>scope = 'api1']
-        V5[Validation 5:<br/>Token Binding<br/>client_id ownership]
-        V6[Validation 6:<br/>Usage Limitation<br/>jti uniqueness]
-    end
-    
-    %% Flow connections
-    CLIENT -->|HTTP POST| TOKEN_REQ
-    TOKEN_REQ --> IS
-    IS --> CONFIG
-    IS -->|JWT Token| TOKEN_RESP
-    TOKEN_RESP --> CLIENT
-    CLIENT -->|Verify Token| VALIDATE
-    
-    %% Validation process
-    VALIDATE --> V1
-    V1 --> V2
-    V2 --> V3
-    V3 --> V4
-    V4 --> V5
-    V5 --> V6
-    
-    %% JWKS and Discovery
-    CLIENT -->|GET| ENDPOINTS
-    ENDPOINTS -->|JWKS + Config| CLIENT
-    
-    %% Optional database connection
-    IS -.->|Optional| DB
-    
-    %% Security test
-    CLIENT -->|Audience Test| SECURITY_TEST[Security Test:<br/>Wrong Audience Rejection]
-    
-    %% Styling
-    classDef serverStyle fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef clientStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef validationStyle fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
-    classDef securityStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    
-    class IS,CONFIG,ENDPOINTS serverStyle
-    class CLIENT clientStyle
-    class V1,V2,V3,V4,V5,V6 validationStyle
-    class SECURITY_TEST securityStyle
+    Note over Client,Server: 4. Token Acquisition (OAuth 2.0 Client Credentials Flow)
+    Client->>Server: POST /connect/token<br/>grant_type=client_credentials<br/>scope=api1<br/>Auth: Basic client:secret
+    Server->>Config: Validate client credentials
+    Config-->>Server: Client validated
+    Server-->>Client: JWT Access Token<br/>+ token_type: Bearer<br/>+ expires_in: 3600
+
+    Note over Client,JWKS: 5. Token Validation Preparation
+    Client->>Server: GET /.well-known/jwks_uri
+    Server-->>Client: JWKS URI location
+    Client->>JWKS: GET JWKS (JSON Web Key Set)
+    JWKS-->>Client: Public keys for signature verification
+
+    Note over Client: 6. Comprehensive JWT Token Validation
+    Client->>Client: Validation 1: Signature Verification<br/>Using JWKS public key
+    Client->>Client: Validation 2: Audience Claim<br/>aud = 'api1'
+    Client->>Client: Validation 3: Expiry Check<br/>exp > current_time
+    Client->>Client: Validation 4: Scope Validation<br/>scope = 'api1'
+    Client->>Client: Validation 5: Token Binding<br/>client_id ownership verification
+    Client->>Client: Validation 6: Usage Limitation<br/>jti uniqueness check
+
+    Note over Client: 7. Security Testing
+    Client->>Client: Create test token with<br/>wrong audience
+    Client->>Client: Attempt validation with<br/>audience = 'wrong-audience'
+    Client->>Client: ❌ Validation fails<br/>(Expected behavior)
+    Client->>Client: ✅ Security test passed
+
+    Note over Client,Server: 8. Test Results
+    Client->>Client: All 6 validations passed ✅
+    Client->>Client: Audience security test passed ✅
+    Client->>Docker: Report test completion
 ```
 
 ## How It Works
