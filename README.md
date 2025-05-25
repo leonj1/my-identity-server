@@ -4,7 +4,7 @@
 
 This project shows how to protect a JWT token against token abuse using OAuth 2.0 and OpenID Connect. The project launches an identity server, creates a script to perform a successful expected validation, and shows an attempt to abuse the token showing how its protected.
 
-## Architecture Overview
+## How this project works
 
 ```mermaid
 sequenceDiagram
