@@ -4,6 +4,90 @@
 
 This project shows how to protect a JWT token against token abuse using OAuth 2.0 and OpenID Connect. The project launches an identity server, creates a script to perform a successful expected validation, and shows an attempt to abuse the token showing how its protected.
 
+## Architecture Overview
+
+```mermaid
+graph TB
+    subgraph "Docker Environment"
+        subgraph "Identity Server Container"
+            IS[Identity Server<br/>ASP.NET Core + Duende IdentityServer]
+            CONFIG[Config.cs<br/>- API Scopes: api1<br/>- Client: client/secret<br/>- Grant: Client Credentials]
+            ENDPOINTS[OpenID Connect Endpoints<br/>/.well-known/openid-configuration<br/>/.well-known/jwks_uri<br/>/connect/token]
+        end
+        
+        subgraph "Integration Client Container"
+            CLIENT[Python Integration Client<br/>identity_client.py]
+        end
+        
+        subgraph "Optional Database"
+            DB[(PostgreSQL<br/>Token Storage)]
+        end
+    end
+    
+    subgraph "Token Flow Process"
+        REGISTER[1. Client Registration<br/>Pre-configured or Dynamic]
+        TOKEN_REQ[2. Token Request<br/>Client Credentials Flow]
+        TOKEN_RESP[3. JWT Token Response<br/>Bearer Token + Metadata]
+        VALIDATE[4. Token Validation<br/>6-Step Security Validation]
+    end
+    
+    subgraph "Security Validations"
+        V1[Validation 1:<br/>Signature Verification<br/>Using JWKS]
+        V2[Validation 2:<br/>Audience Claim<br/>aud = 'api1']
+        V3[Validation 3:<br/>Expiry Check<br/>exp > current_time]
+        V4[Validation 4:<br/>Scope Validation<br/>scope = 'api1']
+        V5[Validation 5:<br/>Token Binding<br/>client_id ownership]
+        V6[Validation 6:<br/>Usage Limitation<br/>jti uniqueness]
+    end
+    
+    %% Flow connections
+    CLIENT -->|HTTP POST| TOKEN_REQ
+    TOKEN_REQ --> IS
+    IS --> CONFIG
+    IS -->|JWT Token| TOKEN_RESP
+    TOKEN_RESP --> CLIENT
+    CLIENT -->|Verify Token| VALIDATE
+    
+    %% Validation process
+    VALIDATE --> V1
+    V1 --> V2
+    V2 --> V3
+    V3 --> V4
+    V4 --> V5
+    V5 --> V6
+    
+    %% JWKS and Discovery
+    CLIENT -->|GET| ENDPOINTS
+    ENDPOINTS -->|JWKS + Config| CLIENT
+    
+    %% Optional database connection
+    IS -.->|Optional| DB
+    
+    %% Security test
+    CLIENT -->|Audience Test| SECURITY_TEST[Security Test:<br/>Wrong Audience Rejection]
+    
+    %% Styling
+    classDef serverStyle fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef clientStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef validationStyle fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef securityStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    
+    class IS,CONFIG,ENDPOINTS serverStyle
+    class CLIENT clientStyle
+    class V1,V2,V3,V4,V5,V6 validationStyle
+    class SECURITY_TEST securityStyle
+```
+
+## How It Works
+
+This project demonstrates a complete OAuth 2.0 Client Credentials flow with comprehensive JWT token security validation:
+
+1. **Identity Server Setup**: ASP.NET Core application using Duende IdentityServer with in-memory configuration
+2. **Client Registration**: Pre-configured client (`client`/`secret`) with `api1` scope access
+3. **Token Acquisition**: Client requests JWT tokens using OAuth 2.0 Client Credentials flow
+4. **Token Validation**: 6-step security validation process ensures token integrity and prevents abuse
+5. **Security Testing**: Validates that tokens with incorrect audiences are properly rejected
+
 ## How to Validate the Implementation
 
 To run the complete integration test suite, use the following command:
@@ -13,12 +97,6 @@ make integration
 ```
 
 ### What `make integration` does:
-
-1. **Clean Environment**: Removes any existing containers and volumes to ensure a clean test environment
-2. **Remove Images**: Deletes existing Docker images to force a fresh build
-3. **Build Images**: Builds both the identity server and integration test client containers from scratch
-4. **Run Integration Tests**: Starts both services and runs the validation tests
-5. **Cleanup**: Automatically removes containers and volumes after test completion
 
 The integration test process:
 - Starts the identity server on port 5050
