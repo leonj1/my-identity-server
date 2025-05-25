@@ -2,26 +2,9 @@
 
 ## Purpose
 
-This project is a **Duende IdentityServer** implementation that provides OAuth 2.0 and OpenID Connect authentication and authorization services. It's designed as a secure token service (STS) that can issue JWT tokens for client applications using the Client Credentials flow.
+This project shows how to protect a JWT token against token abuse using OAuth 2.0 and OpenID Connect. The project launches an identity server, creates a script to perform a successful expected validation, and shows an attempt to abuse the token showing how its protected.
 
-The identity server is configured with:
-- **API Scope**: `api1` - representing a protected API resource
-- **Pre-configured Client**: `client` with secret `secret` for testing
-- **Grant Type**: Client Credentials flow for machine-to-machine authentication
-- **Development Signing Credentials**: For JWT token signing in development environment
-
-## Project Structure
-
-- `src/Program.cs` - Main application entry point and IdentityServer configuration
-- `src/Config.cs` - Identity resources, API scopes, and client configurations
-- `identity_client.py` - Python integration test client for validating the server
-- `Dockerfile` - Container configuration for the identity server
-- `Dockerfile.integration` - Container configuration for the integration test client
-- `docker-compose.yml` - Development environment setup
-- `docker-compose.integration.yml` - Integration testing environment
-- `Makefile` - Build and test automation commands
-
-## How to Run Integration Tests
+## How to Validate the Implementation
 
 To run the complete integration test suite, use the following command:
 
